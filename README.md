@@ -1,8 +1,12 @@
 # fluent-plugin-audio-transcriber
 
-[Fluentd](https://fluentd.org/) output plugin to do something.
+[Fluentd](https://fluentd.org/) filter plugin for transcribing audio files using MLX Whisper.
 
-TODO: write description for you plugin.
+## Overview
+
+This filter plugin transcribes audio content using MLX Whisper and adds the transcription text to the record.
+
+**Note**: This plugin is designed to work only on macOS as it relies on MLX, which is optimized for Apple Silicon.
 
 ## Installation
 
@@ -14,7 +18,7 @@ $ gem install fluent-plugin-audio-transcriber
 
 ### Bundler
 
-Add following line to your Gemfile:
+Add the following line to your Gemfile:
 
 ```ruby
 gem "fluent-plugin-audio-transcriber"
@@ -26,120 +30,96 @@ And then execute:
 $ bundle
 ```
 
-## Configuration
+## Prerequisites
 
-You can generate configuration template:
+- macOS (the plugin uses MLX which is optimized for Apple Silicon)
+- Ruby 3.4 or higher
+- Fluentd v1.0.0 or higher
+- Python 3.11 or higher
+- MLX Whisper installed in a Python environment
 
-```
-$ fluent-plugin-config-format output audio-transcriber
-```
+## Python Environment Setup
 
-You can copy and paste generated documents here.
-
-## Copyright
-
-* Copyright(c) 2025- bash0C7
-* License
-  * Apache License, Version 2.0
-
-# fluent-plugin-audio-transcriber
-
-Fluentd用の音声文字起こし出力プラグイン。MLX Whisperを使用して音声ファイルから文字起こしを行います。
-
-## インストール
-
-```
-$ gem install fluent-plugin-audio-transcriber
-```
-
-## 設定
-
-```
-<match audio.normalized>
-  @type audio_transcriber
-  
-  # MLX Whisper設定
-  model mlx-community/whisper-large-v3-turbo  # 文字起こしモデル
-  language ja                                 # 言語
-  initial_prompt これは日本語のビジネス会議や技術的な議論の文字起こしです。日本語特有の言い回し、敬語表現、専門用語、および固有名詞を正確に認識してください。
-  
-  # Python環境設定
-  python_venv_path /path/to/myenv             # Python仮想環境のパス（デフォルト: ./myenv）
-  
-  # 出力設定
-  tag audio.transcribed                       # 次のステージへのタグ（デフォルト: audio.transcribed）
-  remove_audio false                          # 文字起こし後に音声ファイルを削除するか（デフォルト: false）
-  append_timestamp true                       # 文字起こし結果に日時を追加するか（デフォルト: true）
-</match>
-```
-
-## 入力レコード形式
-
-```
-{
-  "path": "/path/to/normalized/audio/file.normalized.aac",
-  "content": "<binary>",
-}
-```
-
-## 出力レコード形式
-
-```
-{
-  "path": "/path/to/normalized/audio/file.normalized.aac",
-  "transcription": "ここに文字起こし1行分が入ります...",
-  "speech_recognition_model": "mlx-community/whisper-large-v3-turbo",
-  "transcription_language": "ja",
-}
-```
-
-## 必要条件
-
-- Ruby 2.5.0以上
-- fluentd v1.0.0以上
-- Python 3.11以上
-- MLX Whisper（Python環境にインストール済みであること）
-
-## セットアップ手順
-
-1. Python仮想環境の作成とMLX Whisperのインストール
+You need to set up a Python virtual environment with MLX Whisper installed:
 
 ```bash
-# macOSでのpythonのインストール
+# Install Python using pyenv on macOS
 brew install pyenv
 pyenv init
 pyenv install 3.11
 pyenv rehash
-pyenv versions
 pyenv local 3.11
 
-# Python仮想環境と必要パッケージのインストール
-# 注意: 仮想環境はRakefileと同じディレクトリに作成する必要があります
-pyenv exec python -m venv myenv
-source myenv/bin/activate
-pip install mlx-whisper
-
+# Create Python virtual environment and install required packages
+# Note: The virtual environment must be created in the same directory as your Fluentd configuration
 python -m venv myenv
 source myenv/bin/activate
 pip install mlx-whisper
 ```
 
-2. fluentdプラグインのインストール
-
-```bash
-gem install fluent-plugin-audio-transcriber
-```
-
-## よくある問題と解決方法
-
-### PyCall関連のエラー
-
-Python仮想環境のパスが正しく設定されていることを確認してください。
+## Configuration
 
 ```
-python_venv_path /path/to/your/python/venv
+<filter audio.raw>
+  @type audio_transcriber
+  
+  # MLX Whisper settings
+  model mlx-community/whisper-large-v3-turbo  # Transcription model
+  language ja                                  # Language code
+  initial_prompt This is a transcription of Japanese business meetings and technical discussions. Please accurately recognize Japanese expressions, honorific language, technical terms, and proper nouns.
+</filter>
 ```
 
-## ライセンス
+### Plugin Parameters
 
-MIT License
+| Parameter | Type | Description | Default |
+|-----------|------|-------------|---------|
+| model | string | MLX Whisper model name | mlx-community/whisper-large-v3-turbo |
+| language | string | Language code for transcription | ja |
+| initial_prompt | string | Initial prompt to guide transcription | A detailed Japanese prompt (see source code) |
+
+## Input Record Format
+
+The plugin expects records with the following field:
+
+```
+{
+  "content": <binary data of audio file>,
+  ... (other fields)
+}
+```
+
+## Output Record Format
+
+The plugin processes the record and modifies it to:
+
+```
+{
+  "transcription": "Transcribed text line 1\nTranscribed text line 2\n...",
+  "speech_recognition_model": "mlx-community/whisper-large-v3-turbo",
+  "transcription_language": "ja",
+  ... (other original fields except 'content')
+}
+```
+
+**Note**: The `content` field is removed from the output record to reduce data size.
+
+## Common Issues
+
+### PyCall Related Errors
+
+Make sure the Python virtual environment (`myenv`) exists in the same directory where Fluentd is running.
+
+## Development
+
+After checking out the repo, run `bundle install` to install dependencies. Then, run `bundle exec rake test` to run the tests.
+
+To release a new version, update the version number in the gemspec file, and then run `bundle exec rake release`, which will create a git tag for the version, push git commits and tags, and push the `.gem` file to [rubygems.org](https://rubygems.org).
+
+## Contributing
+
+Bug reports and pull requests are welcome on GitHub at https://github.com/bash0C7/fluent-plugin-audio-transcriber.
+
+## License
+
+[Apache License, Version 2.0](LICENSE)
