@@ -78,13 +78,7 @@ $ gem install fluent-plugin-audio-transcriber
 ```
 {
   "path": "/path/to/normalized/audio/file.normalized.aac",
-  "original_path": "/path/to/recorded/audio/file.aac",
-  "size": 123456,
-  "timestamp": 1709289368,
-  "device": 0,
-  "duration": 45.2,
-  "format": "aac",
-  "normalized": true
+  "content": "<binary>",
 }
 ```
 
@@ -93,18 +87,9 @@ $ gem install fluent-plugin-audio-transcriber
 ```
 {
   "path": "/path/to/normalized/audio/file.normalized.aac",
-  "original_path": "/path/to/recorded/audio/file.aac",
-  "size": 123456,
-  "timestamp": 1709289368,
-  "device": 0,
-  "duration": 45.2,
-  "format": "aac",
-  "normalized": true,
-  "transcription": "ここに文字起こし結果が入ります...",
+  "transcription": "ここに文字起こし1行分が入ります...",
   "model": "mlx-community/whisper-large-v3-turbo",
   "language": "ja",
-  "processing_time": 25.4,
-  "segments_count": 12
 }
 ```
 
