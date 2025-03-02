@@ -88,8 +88,8 @@ $ gem install fluent-plugin-audio-transcriber
 {
   "path": "/path/to/normalized/audio/file.normalized.aac",
   "transcription": "ここに文字起こし1行分が入ります...",
-  "model": "mlx-community/whisper-large-v3-turbo",
-  "language": "ja",
+  "speech_recognition_model": "mlx-community/whisper-large-v3-turbo",
+  "transcription_language": "ja",
 }
 ```
 
@@ -105,6 +105,20 @@ $ gem install fluent-plugin-audio-transcriber
 1. Python仮想環境の作成とMLX Whisperのインストール
 
 ```bash
+# macOSでのpythonのインストール
+brew install pyenv
+pyenv init
+pyenv install 3.11
+pyenv rehash
+pyenv versions
+pyenv local 3.11
+
+# Python仮想環境と必要パッケージのインストール
+# 注意: 仮想環境はRakefileと同じディレクトリに作成する必要があります
+pyenv exec python -m venv myenv
+source myenv/bin/activate
+pip install mlx-whisper
+
 python -m venv myenv
 source myenv/bin/activate
 pip install mlx-whisper

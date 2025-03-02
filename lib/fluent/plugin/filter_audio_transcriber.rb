@@ -9,15 +9,14 @@ module Fluent
       Fluent::Plugin.register_filter('audio_transcriber', self)
 
       # Processing options
-      desc 'Transcode options (comma-separated key:value pairs for FFmpeg including filters)'
-      config_param :transcode_options, :string, default: '-c:v copy -af loudnorm=I=-14:TP=0.0:print_format=summary'
-      
-      desc 'Output file extension'
-      config_param :output_extension, :string, default: 'aac'
-      
-      # Other options
-      desc 'Path for temporary files'
-      config_param :buffer_path, :string, default: '/tmp/fluentd-audio-transcriber'
+      desc 'model'
+      config_param :model, :string, default: 'mlx-community/whisper-large-v3-turbo'
+
+      desc 'transcription language'
+      config_param :language, :string, default: 'ja'
+
+      desc 'initial prompt'
+      config_param :initial_prompt, :string, default: "これは日本語のビジネス会議や技術的な議論の文字起こしです。日本語特有の言い回し、敬語表現、専門用語、および固有名詞を正確に認識してください。あいまい表現や言いよどみは適切に処理し、カタカナ語や外来語も正確に変換してください。日本語として解釈できなかった場合は音の通りをカタカナで出力してください。「えー」「あの」などのフィラーは必要に応じて含めてください。"
 
       # Output tag (default: "transcoded." + input tag)
       desc 'Output tag'
@@ -27,20 +26,20 @@ module Fluent
         super
         
         # Initialize processor
-        @processor = AudioTranscriber::Processor.new(@transcode_options, @output_extension, @buffer_path)
+        @processor = AudioTranscriber::Processor.new(@model, @language, @initial_prompt)
       end
 
       def filter(tag, time, record)
         # Process the audio file
-        result = @processor.process(record['path'], record['content'])
+        result = @processor.process(record['content'])
 
         # Use the actual transcoded file path
-        record["path"] = result['path']
-        # Use the size of the transcoded file
-        record["size"] = result['size']
-        # Include the transcoded binary content
-        record["content"] = result['content']
-
+        # ommit the transcoded binary content
+        record.delete["content"] = result['content']
+        record["transcription"] = result.join("\n")
+        record["speech_recognition_model"] = @model
+        record["transcription_language"] = @language
+      
         record
       end
     end

@@ -6,8 +6,10 @@ module Fluent
   module Plugin
     module AudioTranscriber
       class Processor
-        def initialize(model)
+        def initialize(model, language, initial_prompt)
           @model = model 
+          @language = language
+          @initial_prompt = initial_prompt
 
           # 仮想環境のパスの特定（シンプル化）
           myenv_path = File.join(Dir.pwd, "myenv")
@@ -26,9 +28,27 @@ module Fluent
           pyimport 'mlx_whisper'          
         end
         
-        def process(audio_file)
-          transcribed = run_whisper_transcription(audio_file, @model)
-          transcribed['segments'].map { |segment| segment['text'].strip}
+        def process(content)
+          result = []
+
+          Tempfile.create(self.to_s) do |f|
+            File.binwrite(f.path, content)
+
+            transcribed = mlx_whisper.transcribe(
+              f.path,
+              path_or_hf_repo: @model,
+              language: "ja",
+              fp16: true,
+              temperature: [0.0, 0.2, 0.4, 0.6, 0.8],
+              condition_on_previous_text: true,
+              verbose: false,
+              initial_prompt: @initial_promplt
+            )
+            result = transcribed['segments'].map { |segment| segment['text'].strip}
+
+          end
+
+          result
         end
       end
     end

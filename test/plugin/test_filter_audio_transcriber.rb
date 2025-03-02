@@ -3,7 +3,6 @@ require "fluent/plugin/filter_audio_transcriber.rb"
 require "fileutils"
 require "tempfile"
 require "digest"
-require "streamio-ffmpeg"
 
 class AudioTranscriberFilterTest < Test::Unit::TestCase
   setup do
