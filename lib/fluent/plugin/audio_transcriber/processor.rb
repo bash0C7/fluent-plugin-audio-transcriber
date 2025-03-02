@@ -1,5 +1,6 @@
 require 'pycall'
 require 'pycall/import'
+require 'tempfile'
 include PyCall::Import
 
 module Fluent
@@ -11,29 +12,26 @@ module Fluent
           @language = language
           @initial_prompt = initial_prompt
 
-          # Find the virtual environment path (simplified)
-          myenv_path = File.join(Dir.pwd, "myenv")
-          fail "Virtual environment 'myenv' not found" unless Dir.exist?(myenv_path)
+          # Find Python virtual environment
+          myenv_path = File.join(Dir.pwd, 'myenv')
+          fail 'Virtual environment "myenv" not found' unless Dir.exist?(myenv_path)
           
-          # Find Python's site-packages (more efficiently)
+          # Find site-packages directory
           site_packages_pattern = File.join(myenv_path, '**/site-packages')
           site_packages_path = Dir.glob(site_packages_pattern).first
-          fail "Python site-packages directory not found" unless site_packages_path
+          fail 'Python site-packages directory not found' unless site_packages_path
           
-          # Add site directory
+          # Setup Python environment
           site = PyCall.import_module('site')
           site.addsitedir(site_packages_path)
-          
-          # Import transcription module
-          pyimport 'mlx_whisper'          
+          pyimport 'mlx_whisper'
         end
         
         def process(content)
-          result = []
-
-          Tempfile.create(self.to_s) do |f|
+          Tempfile.create('audio_file') do |f|
             File.binwrite(f.path, content)
-
+            
+            # Transcribe audio using MLX Whisper
             transcribed = mlx_whisper.transcribe(
               f.path,
               path_or_hf_repo: @model,
@@ -44,10 +42,10 @@ module Fluent
               verbose: false,
               initial_prompt: @initial_prompt
             )
-            result = transcribed['segments'].map { |segment| segment['text'].strip}
+            
+            # Extract and clean text segments
+            transcribed['segments'].map { |segment| segment['text'].strip }
           end
-
-          result
         end
       end
     end

@@ -2,7 +2,6 @@ require "helper"
 require "fluent/plugin/filter_audio_transcriber.rb"
 require "fileutils"
 require "tempfile"
-require "digest"
 
 class AudioTranscriberFilterTest < Test::Unit::TestCase
   setup do
@@ -15,37 +14,7 @@ class AudioTranscriberFilterTest < Test::Unit::TestCase
     # Create a test audio content (mock binary data)
     @test_audio_content = "MOCK_AUDIO_BINARY_DATA"
     
-    # Mock the processor
-    setup_processor_mock
-  end
-  
-  teardown do
-    # Clean up temporary directory
-    FileUtils.rm_rf(@temp_dir) if Dir.exist?(@temp_dir)
-  end
-
-  DEFAULT_CONFIG = %[
-    model test-model
-    language en
-    initial_prompt This is a test prompt
-  ]
-  
-  DEFAULT_TAG = "test.audio"
-  
-  # Helper method to create filter driver and process messages
-  def filter(config, messages, tag = DEFAULT_TAG)
-    d = create_driver(config)
-    d.run(default_tag: tag) do
-      messages.each do |message|
-        d.feed(message)
-      end
-    end
-    d.filtered_records
-  end
-  
-  # Mock the processor class to avoid actual MLX Whisper calls
-  def setup_processor_mock
-    # Create a mock processor class
+    # Mock the processor class to avoid actual MLX Whisper calls
     mock_processor_class = Class.new do
       def initialize(model, language, initial_prompt)
         @model = model
@@ -60,26 +29,43 @@ class AudioTranscriberFilterTest < Test::Unit::TestCase
     end
     
     # Replace the actual processor with our mock
-    original_processor = Fluent::Plugin::AudioTranscriber::Processor
     stub(Fluent::Plugin::AudioTranscriber).const_get(:Processor) { mock_processor_class }
   end
   
+  teardown do
+    # Clean up temporary directory
+    FileUtils.rm_rf(@temp_dir) if Dir.exist?(@temp_dir)
+  end
+
+  DEFAULT_CONFIG = %[
+    model test-model
+    language en
+    initial_prompt This is a test prompt
+  ]
+  
   sub_test_case "configuration" do
     test "default configuration" do
+      # Arrange
       d = create_driver(DEFAULT_CONFIG)
+      
+      # Assert
       assert_equal 'test-model', d.instance.model
       assert_equal 'en', d.instance.language
       assert_equal 'This is a test prompt', d.instance.initial_prompt
     end
     
     test "custom configuration" do
+      # Arrange
       custom_config = %[
         model custom-model
         language ja
         initial_prompt Custom prompt
       ]
       
+      # Act
       d = create_driver(custom_config)
+      
+      # Assert
       assert_equal 'custom-model', d.instance.model
       assert_equal 'ja', d.instance.language
       assert_equal 'Custom prompt', d.instance.initial_prompt
@@ -88,17 +74,22 @@ class AudioTranscriberFilterTest < Test::Unit::TestCase
   
   sub_test_case "filter processing" do
     test "transcription process" do
-      # Create test message with audio content
+      # Arrange - Create test message with audio content
+      tag = "test.audio"
       message = {
         "path" => "/path/to/audio.mp3",
         "content" => @test_audio_content,
         "additional_field" => "value"
       }
       
-      # Process the message
-      filtered_records = filter(DEFAULT_CONFIG, [message])
+      # Act - Process the message
+      d = create_driver(DEFAULT_CONFIG)
+      d.run(default_tag: tag) do
+        d.feed(message)
+      end
+      filtered_records = d.filtered_records
       
-      # Verify that the record was processed
+      # Assert - Verify that the record was processed correctly
       assert_equal 1, filtered_records.size
       
       record = filtered_records.first
@@ -119,7 +110,7 @@ class AudioTranscriberFilterTest < Test::Unit::TestCase
 
   private
 
-  def create_driver(conf = DEFAULT_CONFIG)
+  def create_driver(conf)
     Fluent::Test::Driver::Filter.new(Fluent::Plugin::AudioTranscriberFilter).configure(conf)
   end
 end
