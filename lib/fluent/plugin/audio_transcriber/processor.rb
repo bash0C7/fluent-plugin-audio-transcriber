@@ -23,7 +23,7 @@ module Fluent
           
           # Setup Python environment
           site = PyCall.import_module('site')
-          site.addsitedir(site_packages_path)
+          site.addsitedir(site_packages_path.encode('utf-8'))
           pyimport 'mlx_whisper'
         end
         
